@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "Public profile for Brandly users",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["displayName", "email", "createdAt"]
+    },
+    "brand_project": {
+      "title": "Brand Project",
+      "description": "A generated brand identity project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner of the project" },
+        "input": { "type": "string", "description": "Original about us text" },
+        "createdAt": { "type": "number" },
+        "identity": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "tagline": { "type": "string" },
+            "mission": { "type": "string" },
+            "vision": { "type": "string" },
+            "colors": { "type": "object" },
+            "typography": { "type": "object" },
+            "values": { "type": "array" },
+            "tailwind_config": { "type": "string" }
+          }
+        }
+      },
+      "required": ["userId", "input", "identity", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile documents"
+    },
+    "/brands/{brandId}": {
+      "schema": "brand_project",
+      "description": "Collection of generated brand projects"
+    }
+  }
+}
