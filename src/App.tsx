@@ -4,6 +4,7 @@ import { Footer } from './components/layout/Footer';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { Analytics } from '@vercel/analytics/react';
 import Home from './pages/Home';
 import Generator from './pages/Generator';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +18,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <Router>
+      <Analytics />
       <SettingsProvider>
         <AuthProvider>
           <div className="min-h-screen bg-white flex flex-col">
