@@ -3,6 +3,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import Home from './pages/Home';
 import Generator from './pages/Generator';
 import Dashboard from './pages/Dashboard';
@@ -14,6 +15,7 @@ import Legal from './pages/Legal';
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Router>
       <SettingsProvider>
         <AuthProvider>
@@ -36,5 +38,6 @@ export default function App() {
         </AuthProvider>
       </SettingsProvider>
     </Router>
+    </ErrorBoundary>
   );
 }

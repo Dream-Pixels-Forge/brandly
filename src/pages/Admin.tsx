@@ -2,19 +2,33 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Card } from '../components/ui/Card';
 import { Users, BarChart3, Database, Globe } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { statsService } from '../services/statsService';
 import { Loading } from '../components/ui/Loading';
+import { useNavigate } from 'react-router-dom';
+
+const ADMIN_EMAILS = ['dimona@brandly.ai'];
 
 export default function Admin() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [statsData, setStatsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) {
+      navigate('/', { replace: true });
+      return;
+    }
+    if (!ADMIN_EMAILS.includes(user.email || '')) {
+      navigate('/', { replace: true });
+      return;
+    }
     statsService.getGlobalStats().then(data => {
       setStatsData(data);
       setLoading(false);
     });
-  }, []);
+  }, [user, navigate]);
 
   if (loading) {
     return <Loading />;

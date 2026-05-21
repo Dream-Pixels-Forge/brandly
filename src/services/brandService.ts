@@ -1,13 +1,13 @@
 import { 
   collection, 
   addDoc, 
-  updateDoc, 
   deleteDoc, 
   doc, 
   query, 
   where, 
   getDocs, 
   orderBy,
+  limit,
   serverTimestamp,
   getDoc
 } from 'firebase/firestore';
@@ -36,7 +36,8 @@ export const brandService = {
       const q = query(
         collection(db, BRANDS_COLLECTION),
         where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({

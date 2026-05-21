@@ -1,11 +1,12 @@
-import React from 'react';
 import { cn } from '../../lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps {
+  className?: string;
+  children?: React.ReactNode;
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export function Card({ className, children, padding = 'md', ...props }: CardProps) {
+export function Card({ className, children, padding = 'md' }: CardProps) {
   const paddings = {
     none: '',
     sm: 'p-4',
@@ -20,7 +21,6 @@ export function Card({ className, children, padding = 'md', ...props }: CardProp
         paddings[padding],
         className
       )}
-      {...props}
     >
       {/* Structural Inlay */}
       <div className="absolute top-0 right-0 w-8 h-[1px] bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-500" />

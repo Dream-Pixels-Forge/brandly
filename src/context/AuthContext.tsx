@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,22 +16,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const startTime = Date.now();
-    const minDuration = 1000; // 1 second minimum for "Solid" feel
+    const minDuration = 1000;
 
-    return onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Sync user to firestore
-        const userRef = doc(db, 'users', user.uid);
+    return onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        const userRef = doc(db, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
         if (!userSnap.exists()) {
           await setDoc(userRef, {
-            displayName: user.displayName || 'Contributor',
-            email: user.email || '',
-            photoURL: user.photoURL || '',
+            displayName: authUser.displayName || 'Contributor',
+            email: authUser.email || '',
+            photoURL: authUser.photoURL || '',
             createdAt: serverTimestamp(),
           });
         }
@@ -41,7 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const remaining = Math.max(0, minDuration - elapsed);
 
       setTimeout(() => {
-        setUser(user);
+        if (!mountedRef.current) return;
+        setUser(authUser);
         setLoading(false);
       }, remaining);
     });

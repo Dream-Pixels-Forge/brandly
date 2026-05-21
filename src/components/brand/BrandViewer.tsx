@@ -10,9 +10,11 @@ import { BrandPreview } from './BrandPreview';
 interface BrandViewerProps {
   brand: BrandIdentity;
   onRegenerate: () => void;
+  onRegenerateAspect?: (aspect: 'colors' | 'typography' | 'name') => void;
+  regeneratingAspect?: string | null;
 }
 
-export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
+export function BrandViewer({ brand, onRegenerate, onRegenerateAspect, regeneratingAspect }: BrandViewerProps) {
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingMarkdown, setIsExportingMarkdown] = useState(false);
@@ -66,7 +68,7 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(8);
         pdf.setTextColor(150, 150, 150);
-        pdf.text(`${brand.name.toUpperCase()} // BRAND GUIDELINES`, margin, 12);
+        pdf.text(pdf.splitTextToSize(`${brand.name.toUpperCase()} // BRAND GUIDELINES`, innerWidth - 40), margin, 12);
         pdf.text(sectionTitle.toUpperCase(), pageWidth - margin, 12, { align: 'right' });
 
         pdf.setFont('helvetica', 'normal');
@@ -156,7 +158,8 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
         pdf.setTextColor(24, 24, 27);
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(value.toUpperCase(), margin + 15, y + 1);
+        const valueLines = pdf.splitTextToSize(value.toUpperCase(), innerWidth - 15);
+        pdf.text(valueLines, margin + 15, y + 1);
       });
 
       // 3. VISUAL IDENTITY (Tone, Palette)
@@ -178,8 +181,8 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
       pdf.text('IDENTITY_TONE', margin, 65);
       pdf.setTextColor(24, 24, 27);
       pdf.setFontSize(12);
-      pdf.text(`CHARACTER: ${brand.tone.toUpperCase()}`, margin, 72);
-      pdf.text(`AUDIENCE: ${brand.target_audience.toUpperCase()}`, margin, 78);
+      pdf.text(pdf.splitTextToSize(`CHARACTER: ${brand.tone.toUpperCase()}`, innerWidth), margin, 72);
+      pdf.text(pdf.splitTextToSize(`AUDIENCE: ${brand.target_audience.toUpperCase()}`, innerWidth), margin, 78);
 
       // Color Palette (Manual Drawing for Sharpness)
       pdf.setFont('helvetica', 'bold');
@@ -249,7 +252,7 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
       const sampleText = "Design is not just what it looks like and feels like. Design is how it works. A brand is no longer what we tell the consumer it is — it is what consumers tell each other it is.";
       pdf.text(pdf.splitTextToSize(sampleText, innerWidth), margin, 142);
 
-      // Tailwind Config (Last page or bottom)
+      // Tailwind Config
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(100, 100, 100);
       pdf.setFontSize(8);
@@ -263,6 +266,246 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
       const codeLines = pdf.splitTextToSize(brand.tailwind_config, innerWidth - 20);
       pdf.text(codeLines.slice(0, 35), margin + 10, 190);
 
+      // 5. STRATEGIC SYNTHESIS — LOGO + CONSTRAINTS
+      pdf.addPage();
+      drawFrame(5, '04a_Logo_Strategy');
+
+      pdf.setTextColor(24, 24, 27);
+      pdf.setFontSize(24);
+      pdf.text('LOGO STRATEGY', margin, 40);
+      pdf.setFontSize(10);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('PSYCHOLOGY, VARIANTS AND DESIGN CONSTRAINTS', margin, 46);
+
+      let sy = 65;
+
+      // Logo Psychology
+      if (brand.logo_psychology) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('LOGO_PSYCHOLOGY', margin, sy);
+        sy += 9;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(24, 24, 27);
+        const lpLines = [
+          `Shape: ${brand.logo_psychology.shape_archetype} — ${brand.logo_psychology.shape_meaning || ''}`,
+          `Type: ${brand.logo_psychology.symbol_type}  |  Style: ${brand.logo_psychology.mark_style}`,
+          `Rationale: ${brand.logo_psychology.rationale}`,
+        ];
+        lpLines.forEach(line => {
+          const wrapped = pdf.splitTextToSize(line, innerWidth);
+          pdf.text(wrapped, margin, sy);
+          sy += wrapped.length * 5 + 2;
+        });
+        sy += 6;
+      }
+
+      // Logo Variants
+      if (brand.logo_variants) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('LOGO_VARIANTS', margin, sy);
+        sy += 9;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(24, 24, 27);
+        (['horizontal', 'vertical', 'icon_only', 'monochrome'] as const).forEach(v => {
+          const val = brand.logo_variants![v];
+          if (val) {
+            const wrapped = pdf.splitTextToSize(`${v.replace('_', ' ')}: ${val}`, innerWidth);
+            pdf.text(wrapped, margin, sy);
+            sy += wrapped.length * 5 + 1;
+          }
+        });
+        sy += 6;
+      }
+
+      // Design Constraints
+      if (brand.design_constraints) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('DESIGN_CONSTRAINTS', margin, sy);
+        sy += 9;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(24, 24, 27);
+        const dc = brand.design_constraints;
+        const dcLines = [
+          `Type Families: ${dc.type_family_count}  |  Colors Per Design: ${dc.color_count}  |  Accent: ${dc.accent_color}`,
+          `Rationale: ${dc.rationale}`,
+        ];
+        dcLines.forEach(line => {
+          const wrapped = pdf.splitTextToSize(line, innerWidth);
+          pdf.text(wrapped, margin, sy);
+          sy += wrapped.length * 5 + 2;
+        });
+      }
+
+      // 6. STRATEGIC SYNTHESIS — EMOTIONS + SYSTEM
+      pdf.addPage();
+      drawFrame(6, '04b_Emotion_System');
+
+      pdf.setTextColor(24, 24, 27);
+      pdf.setFontSize(24);
+      pdf.text('EMOTIONS & SYSTEM', margin, 40);
+      pdf.setFontSize(10);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('EMOTIONAL MAPPING, GRID AND FUNCTIONAL COLOR ROLES', margin, 46);
+
+      sy = 65;
+
+      // Emotional Mapping
+      if (brand.emotional_mapping) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('EMOTIONAL_MAPPING', margin, sy);
+        sy += 9;
+        const em = brand.emotional_mapping;
+        // Target emotions as a tag row
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(24, 24, 27);
+        let emWrapped = pdf.splitTextToSize(`Target Emotions: ${em.target_emotions.join(', ')}`, innerWidth);
+        pdf.text(emWrapped, margin, sy);
+        sy += emWrapped.length * 5 + 2;
+        // Design block as a compact table
+        const emRows = [
+          { label: 'Color', text: em.color_rationale },
+          { label: 'Typography', text: em.typography_rationale },
+          { label: 'Imagery', text: em.imagery_rationale },
+          { label: 'Layout', text: em.layout_rationale },
+        ];
+        emRows.forEach(row => {
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(row.label, margin, sy);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.setTextColor(24, 24, 27);
+          const wrapped = pdf.splitTextToSize(row.text, innerWidth - 25);
+          pdf.text(wrapped, margin + 25, sy - 1);
+          sy += Math.max(wrapped.length * 4 + 2, 10);
+        });
+        sy += 3;
+      }
+
+      // Grid Spec
+      if (brand.grid_spec) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('GRID_SYSTEM', margin, sy);
+        sy += 9;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(24, 24, 27);
+        const gs = brand.grid_spec;
+        const gsLines = [
+          `Type: ${gs.type}  |  Columns: ${gs.columns}  |  Gutter: ${gs.gutter}  |  Column Width: ${gs.column_width}`,
+          `Rationale: ${gs.rationale}`,
+        ];
+        gsLines.forEach(line => {
+          const wrapped = pdf.splitTextToSize(line, innerWidth);
+          pdf.text(wrapped, margin, sy);
+          sy += wrapped.length * 5 + 2;
+        });
+        sy += 6;
+      }
+
+      // Color Roles
+      if (brand.color_roles) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('FUNCTIONAL_COLOR_ROLES', margin, sy);
+        sy += 9;
+        const entries = Object.entries(brand.color_roles);
+        entries.forEach(([role, hex], i) => {
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          const x = margin + col * (innerWidth / 3);
+          const y = sy + row * 14;
+          const rgb = hexToRgb(hex);
+          if (rgb) { pdf.setFillColor(rgb.r, rgb.g, rgb.b); pdf.setDrawColor(0, 0, 0); }
+          pdf.rect(x, y, 8, 8, 'F');
+          pdf.setTextColor(24, 24, 27);
+          pdf.setFontSize(7);
+          pdf.text(role.replace('_', ' '), x + 11, y + 3);
+          pdf.setFont('courier', 'normal');
+          pdf.setFontSize(6);
+          pdf.setTextColor(150, 150, 150);
+          pdf.text(hex, x + 11, y + 8);
+        });
+      }
+
+      // 7. QUALITY AUDIT
+      pdf.addPage();
+      drawFrame(7, '05_Quality_Audit');
+
+      pdf.setTextColor(24, 24, 27);
+      pdf.setFontSize(24);
+      pdf.text('DESIGN QUALITY AUDIT', margin, 40);
+      pdf.setFontSize(10);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text('AUTOMATED QUALITY SCORING AGAINST DESIGN STANDARDS', margin, 46);
+
+      const rgb6 = (hex: string) => {
+        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
+      };
+      const lum6 = (c: {r:number,g:number,b:number}) => {
+        const f = (x: number) => { const s = x/255; return s <= 0.03928 ? s/12.92 : Math.pow((s+0.055)/1.055, 2.4); };
+        return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b);
+      };
+      const ratio6 = (a: string, b: string) => {
+        const la = lum6(rgb6(a)!), lb = lum6(rgb6(b)!);
+        return (Math.max(la,lb)+0.05) / (Math.min(la,lb)+0.05);
+      };
+      const textContrast6 = ratio6(brand.colors.text, brand.colors.background);
+      const primaryBgContrast6 = ratio6(brand.colors.primary, brand.colors.background);
+
+      const scores = [
+        { label: 'Text/Bg Contrast', value: textContrast6.toFixed(1), pass: textContrast6 >= 4.5, note: textContrast6 >= 4.5 ? 'WCAG AA' : textContrast6 >= 3 ? 'AA Large' : 'FAIL' },
+        { label: 'Primary/Bg Contrast', value: primaryBgContrast6.toFixed(1), pass: primaryBgContrast6 >= 3, note: primaryBgContrast6 >= 4.5 ? 'AA' : primaryBgContrast6 >= 3 ? 'AA Large' : 'FAIL' },
+        { label: 'Values Count', value: `${brand.values.length}`, pass: brand.values.length >= 3, note: brand.values.length >= 3 ? '≥3' : '<3' },
+        { label: 'Font Variety', value: brand.typography.heading.family !== brand.typography.body.family ? 'Distinct' : 'Same', pass: brand.typography.heading.family !== brand.typography.body.family, note: 'Must differ' },
+        { label: 'Tailwind Config', value: brand.tailwind_config ? 'Valid' : 'Missing', pass: !!brand.tailwind_config, note: 'Required' },
+        { label: 'Color Roles', value: brand.color_roles ? 'Defined' : 'Missing', pass: !!brand.color_roles, note: 'Functional' },
+        { label: 'Logo Variants', value: brand.logo_variants ? 'Defined' : 'Missing', pass: !!brand.logo_variants, note: 'Context' },
+        { label: 'Constraints', value: brand.design_constraints ? 'Defined' : 'Missing', pass: !!brand.design_constraints, note: 'Discipline' },
+        { label: 'Emotion Map', value: brand.emotional_mapping ? 'Defined' : 'Missing', pass: !!brand.emotional_mapping, note: 'Emotion→Design' },
+      ];
+
+      scores.forEach((s, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const x = margin + col * (innerWidth / 3);
+        const y = 65 + row * 30;
+        pdf.setDrawColor(s.pass ? 0 : 200, s.pass ? 100 : 0, s.pass ? 0 : 0);
+        pdf.setFillColor(s.pass ? 240 : 255, s.pass ? 248 : 240, s.pass ? 240 : 240);
+        pdf.rect(x, y, innerWidth / 3 - 5, 25, 'FD');
+        pdf.setTextColor(s.pass ? 0 : 180, s.pass ? 100 : 0, s.pass ? 0 : 0);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(6);
+        pdf.text(s.pass ? '✓' : '✗', x + innerWidth / 3 - 15, y + 10, { align: 'center' });
+        pdf.setFontSize(7);
+        pdf.setTextColor(24, 24, 27);
+        pdf.text(s.label, x + 5, y + 8);
+        pdf.setFontSize(10);
+        pdf.setFont('courier', 'bold');
+        pdf.text(s.value, x + 5, y + 18);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(6);
+        pdf.setTextColor(s.pass ? 60 : 200, s.pass ? 120 : 0, s.pass ? 60 : 0);
+        pdf.text(s.note, x + 5, y + 23);
+      });
+
       pdf.save(`BRAND_IDENTITY_${brand.name.toUpperCase().replace(/\s+/g, '_')}.pdf`);
     } catch (error) {
       console.error('PDF Export failed:', error);
@@ -271,59 +514,151 @@ export function BrandViewer({ brand, onRegenerate }: BrandViewerProps) {
     }
   };
 
-  const exportMarkdown = () => {
-    setIsExportingMarkdown(true);
-    try {
-      const markdown = `# ${brand.name.toUpperCase()} — BRAND IDENTITY MANIFEST
-Generated on ${new Date().toLocaleDateString()}
+  const buildDesignMd = () => {
+    const colorRolesBlock = brand.color_roles ? `
+### Color Roles
+| Role | Hex |
+|------|-----|
+${Object.entries(brand.color_roles).map(([role, hex]) => `| \`${role.replace('_', ' ')}\` | \`${hex}\` |`).join('\n')}
+` : '';
 
-## 01. CORE STRATEGY
+    const logoPsychBlock = brand.logo_psychology ? `
+### Logo Direction
+- **Shape Archetype:** ${brand.logo_psychology.shape_archetype}
+- **Shape Meaning:** ${brand.logo_psychology.shape_meaning}
+- **Symbol Type:** ${brand.logo_psychology.symbol_type}
+- **Mark Style:** ${brand.logo_psychology.mark_style}
+- **Rationale:** ${brand.logo_psychology.rationale}
+` : '';
 
-### MISSION
+    const gridBlock = brand.grid_spec ? `
+### Grid System
+- **Type:** ${brand.grid_spec.type}
+- **Columns:** ${brand.grid_spec.columns}
+- **Gutter:** ${brand.grid_spec.gutter}
+- **Column Width:** ${brand.grid_spec.column_width}
+- **Rationale:** ${brand.grid_spec.rationale}
+` : '';
+
+    const logoVariantBlock = brand.logo_variants ? `
+### Logo Variants
+- **Horizontal:** ${brand.logo_variants.horizontal}
+- **Vertical:** ${brand.logo_variants.vertical}
+- **Icon Only:** ${brand.logo_variants.icon_only}
+- **Monochrome:** ${brand.logo_variants.monochrome}
+` : '';
+
+    const constraintsBlock = brand.design_constraints ? `
+### Design Constraints
+- **Type Families:** ${brand.design_constraints.type_family_count}
+- **Colors Per Design:** ${brand.design_constraints.color_count}
+- **Accent Color:** ${brand.design_constraints.accent_color}
+- **Rationale:** ${brand.design_constraints.rationale}
+` : '';
+
+    const emotionBlock = brand.emotional_mapping ? `
+### Emotional Mapping
+- **Target Emotions:** ${brand.emotional_mapping.target_emotions.join(', ')}
+- **Color:** ${brand.emotional_mapping.color_rationale}
+- **Typography:** ${brand.emotional_mapping.typography_rationale}
+- **Imagery:** ${brand.emotional_mapping.imagery_rationale}
+- **Layout:** ${brand.emotional_mapping.layout_rationale}
+` : '';
+
+    return `# DESIGN.md
+
+## Brand Identity — ${brand.name}
+
+> **Category:** ${brand.category}  
+> **Tone:** ${brand.tone}  
+> **Target Audience:** ${brand.target_audience}  
+> **Generated:** ${new Date().toLocaleDateString()}
+
+---
+
+## 1. Core Strategy
+
+### Mission
 > "${brand.mission}"
 
-### VISION
+### Vision
 ${brand.vision}
 
-### CORE VALUES
-${brand.values.map((v, i) => `${i + 1}. ${v}`).join('\n')}
+### Core Values
+${brand.values.map((v, i) => `1. ${v}`).join('\n')}
 
 ---
 
-## 02. IDENTITY NARRATIVE
+## 2. Visual Identity
 
-**Tone/Character:** ${brand.tone}
-**Target Audience:** ${brand.target_audience}
-**Tagline:** ${brand.tagline}
+### Tagline
+${brand.tagline}
 
----
-
-## 03. VISUAL SYSTEM
-
-### 3.1 COLOR PALETTE
+### Color Palette
 - **Primary:** \`${brand.colors.primary}\`
 - **Secondary:** \`${brand.colors.secondary}\`
 - **Accent:** \`${brand.colors.accent}\`
 - **Background:** \`${brand.colors.background}\`
 - **Text:** \`${brand.colors.text}\`
-
-### 3.2 TYPOGRAPHY
-- **Heading Family:** ${brand.typography.heading.family} (${brand.typography.heading.source})
-- **Body Family:** ${brand.typography.body.family} (${brand.typography.body.source})
+${colorRolesBlock}
+### Typography
+- **Display/Heading:** ${brand.typography.heading.family} — ${brand.typography.heading.source}
+- **Body:** ${brand.typography.body.family} — ${brand.typography.body.source}
+${logoPsychBlock}
+${logoVariantBlock}
+${constraintsBlock}
+${emotionBlock}
+${gridBlock}
+### Logo Description
+${brand.logo_description}
 
 ---
 
-## 04. IMPLEMENTATION
+## 3. Implementation
 
-### TAILWIND CONFIGURATION
+### Design Tokens
+\`\`\`css
+/* Base Colors */
+--color-primary: ${brand.colors.primary};
+--color-secondary: ${brand.colors.secondary};
+--color-accent: ${brand.colors.accent};
+--color-background: ${brand.colors.background};
+--color-text: ${brand.colors.text};
+
+/* Typography */
+--font-display: '${brand.typography.heading.family}', sans-serif;
+--font-body: '${brand.typography.body.family}', sans-serif;
+
+/* Functional Roles */
+${brand.color_roles ? Object.entries(brand.color_roles).map(([role, hex]) => `--color-${role.replace('_', '-')}: ${hex};`).join('\n') : '/* (functional roles not generated) */'}
+\`\`\`
+
+### Tailwind Config
 \`\`\`json
 ${brand.tailwind_config}
 \`\`\`
 
 ---
-© ${new Date().getFullYear()} IDENTITY_SYNTHESIS_ENGINE // SYSTEM_V1.2
-`;
 
+## 4. Token Architecture
+
+This design system follows a 3-layer token hierarchy:
+
+1. **Base tokens** — raw values (e.g., \`--color-primary: ${brand.colors.primary}\`)
+2. **Semantic tokens** — purpose-driven mappings (e.g., \`--color-action: var(--color-primary)\`)
+3. **Component tokens** — specific component overrides (e.g., \`--btn-primary-bg: var(--color-action)\`)
+
+---
+
+*Generated by Brandly Identity Synthesis Engine*  
+© ${new Date().getFullYear()}
+`;
+  };
+
+  const exportMarkdown = () => {
+    setIsExportingMarkdown(true);
+    try {
+      const markdown = buildDesignMd();
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -334,7 +669,7 @@ ${brand.tailwind_config}
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Markdown Export failed:', error);
+      console.error('DESIGN.md Export failed:', error);
     } finally {
       setIsExportingMarkdown(false);
     }
@@ -584,6 +919,28 @@ ${brand.tailwind_config}
             );
           })}
         </div>
+
+        {brand.color_roles && (
+          <div className="border border-zinc-200 bg-white p-8 lg:p-12 space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-px bg-zinc-900" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-900">Functional_Color_Map</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {Object.entries(brand.color_roles).map(([role, hex]) => (
+                <div key={role} className="space-y-3">
+                  <div className="aspect-square border border-zinc-200 flex items-center justify-center" style={{ backgroundColor: hex }}>
+                    <span className="text-[8px] font-mono font-black text-white mix-blend-difference">{hex}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-900">{role.replace('_', ' ')}</p>
+                    <p className="text-[8px] font-mono text-zinc-400">{hex}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Typography */}
@@ -635,13 +992,60 @@ ${brand.tailwind_config}
         </div>
       </section>
 
+      {/* Design Quality Audit */}
+      <section className="space-y-12">
+        <div className="flex items-center gap-6">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 shrink-0">Quality_Audit</h2>
+          <div className="h-px flex-1 bg-zinc-900" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {(() => {
+            const rgb = (hex: string) => {
+              const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
+            };
+            const luminance = (c: {r:number,g:number,b:number}) => {
+              const f = (x: number) => { const s = x/255; return s <= 0.03928 ? s/12.92 : Math.pow((s+0.055)/1.055, 2.4); };
+              return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b);
+            };
+            const ratio = (a: string, b: string) => {
+              const la = luminance(rgb(a)!), lb = luminance(rgb(b)!);
+              return (Math.max(la,lb)+0.05) / (Math.min(la,lb)+0.05);
+            };
+            const textContrast = ratio(brand.colors.text, brand.colors.background);
+            const primaryBgContrast = ratio(brand.colors.primary, brand.colors.background);
+            const scores = [
+              { label: 'Text/Bg Contrast', value: textContrast.toFixed(1), pass: textContrast >= 4.5, note: textContrast >= 4.5 ? 'WCAG AA' : textContrast >= 3 ? 'WCAG AA Large' : 'FAIL' },
+              { label: 'Primary/Bg Contrast', value: primaryBgContrast.toFixed(1), pass: primaryBgContrast >= 3, note: primaryBgContrast >= 4.5 ? 'AA' : primaryBgContrast >= 3 ? 'AA Large' : 'FAIL' },
+              { label: 'Values Count', value: `${brand.values.length}`, pass: brand.values.length >= 3, note: brand.values.length >= 3 ? '≥3' : 'Minimum 3' },
+              { label: 'Heading Font Variety', value: brand.typography.heading.family !== brand.typography.body.family ? 'Distinct' : 'Same', pass: brand.typography.heading.family !== brand.typography.body.family, note: 'Must contrast body' },
+              { label: 'Tailwind Config', value: brand.tailwind_config ? 'Valid' : 'Missing', pass: !!brand.tailwind_config, note: 'Required for dev handoff' },
+              { label: 'Color Roles', value: brand.color_roles ? 'Defined' : 'Missing', pass: !!brand.color_roles, note: 'Functional mapping' },
+              { label: 'Logo Variants', value: brand.logo_variants ? 'Defined' : 'Missing', pass: !!brand.logo_variants, note: 'Context adaptations' },
+              { label: 'Design Constraints', value: brand.design_constraints ? 'Defined' : 'Missing', pass: !!brand.design_constraints, note: 'System discipline' },
+              { label: 'Emotional Mapping', value: brand.emotional_mapping ? 'Defined' : 'Missing', pass: !!brand.emotional_mapping, note: 'Emotion→design link' },
+            ];
+            return scores.map((s, i) => (
+              <div key={i} className={`p-6 border space-y-3 ${s.pass ? 'border-green-900 bg-green-50' : 'border-red-900 bg-red-50'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{s.label}</span>
+                  <span className={`text-lg font-black ${s.pass ? 'text-green-800' : 'text-red-800'}`}>{s.pass ? '✓' : '✗'}</span>
+                </div>
+                <p className="text-xl font-black tracking-tight text-zinc-900">{s.value}</p>
+                <p className={`text-[9px] font-mono ${s.pass ? 'text-green-700' : 'text-red-700'}`}>{s.note}</p>
+              </div>
+            ));
+          })()}
+        </div>
+      </section>
+
       {/* Brand Intelligence Analysis */}
       <section className="space-y-12">
         <div className="flex items-center gap-6">
           <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 shrink-0">Strategic_Synthesis</h2>
           <div className="h-px flex-1 bg-zinc-900" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div className="p-8 border border-zinc-900 space-y-4">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Market_Positioning</h4>
             <p className="text-sm font-medium leading-relaxed">
@@ -660,6 +1064,120 @@ ${brand.tailwind_config}
               Typographic pairing of <span className="font-bold">{brand.typography.heading.family}</span> ensures legacy-level consistency across {brand.category}-specific digital touchpoints and future physical assets.
             </p>
           </div>
+          {brand.logo_psychology && (
+          <div className="p-8 border border-zinc-900 space-y-4 col-span-1 md:col-span-2 lg:col-span-3">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Logo_Psychology</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex gap-2 text-[10px] font-mono">
+                  <span className="text-zinc-400 uppercase">Shape:</span>
+                  <span className="font-bold uppercase text-zinc-900">{brand.logo_psychology.shape_archetype}</span>
+                </div>
+                {brand.logo_psychology.shape_meaning && (
+                <div className="flex gap-2 text-[10px] font-mono">
+                  <span className="text-zinc-400 uppercase">Meaning:</span>
+                  <span className="font-bold uppercase text-zinc-900">{brand.logo_psychology.shape_meaning}</span>
+                </div>
+                )}
+                <div className="flex gap-2 text-[10px] font-mono">
+                  <span className="text-zinc-400 uppercase">Symbol:</span>
+                  <span className="font-bold uppercase text-zinc-900">{brand.logo_psychology.symbol_type}</span>
+                </div>
+                <div className="flex gap-2 text-[10px] font-mono">
+                  <span className="text-zinc-400 uppercase">Style:</span>
+                  <span className="font-bold uppercase text-zinc-900">{brand.logo_psychology.mark_style}</span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed mt-4">
+                  {brand.logo_psychology.rationale}
+                </p>
+              </div>
+            </div>
+          </div>
+          )}
+          {brand.logo_variants && (
+          <div className="p-8 border border-zinc-900 space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Logo_Variants</h4>
+            <div className="space-y-3">
+              {(['horizontal', 'vertical', 'icon_only', 'monochrome'] as const).map((variant) => (
+                <div key={variant} className="space-y-1">
+                  <div className="flex gap-2 text-[10px] font-mono">
+                    <span className="text-zinc-400 uppercase">{variant.replace('_', ' ')}:</span>
+                    <span className="font-bold uppercase text-zinc-900">
+                      {brand.logo_variants![variant]}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          )}
+          {brand.grid_spec && (
+          <div className="p-8 border border-zinc-900 space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Grid_System</h4>
+            <div className="space-y-2">
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Type:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.grid_spec.type}</span>
+              </div>
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Columns:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.grid_spec.columns}</span>
+              </div>
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Gutter:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.grid_spec.gutter}</span>
+              </div>
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Column:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.grid_spec.column_width}</span>
+              </div>
+              <p className="text-xs font-medium leading-relaxed mt-4">
+                {brand.grid_spec.rationale}
+              </p>
+            </div>
+          </div>
+          )}
+          {brand.design_constraints && (
+          <div className="p-8 border border-zinc-900 space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Design_Constraints</h4>
+            <div className="space-y-2">
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Type Families:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.design_constraints.type_family_count}</span>
+              </div>
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Colors Per Design:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.design_constraints.color_count}</span>
+              </div>
+              <div className="flex gap-2 text-[10px] font-mono">
+                <span className="text-zinc-400 uppercase">Accent:</span>
+                <span className="font-bold uppercase text-zinc-900">{brand.design_constraints.accent_color}</span>
+              </div>
+              <p className="text-xs font-medium leading-relaxed mt-4">
+                {brand.design_constraints.rationale}
+              </p>
+            </div>
+          </div>
+          )}
+          {brand.emotional_mapping && (
+          <div className="p-8 border border-zinc-900 space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Emotional_Mapping</h4>
+            <div className="space-y-2">
+              <div className="flex gap-2 text-[10px] font-mono flex-wrap">
+                <span className="text-zinc-400 uppercase">Target Emotions:</span>
+                {brand.emotional_mapping.target_emotions.map((e, i) => (
+                  <span key={i} className="font-bold uppercase text-zinc-900 bg-zinc-100 px-2 py-0.5 text-[9px]">{e}</span>
+                ))}
+              </div>
+              <div className="pt-2 space-y-1">
+                <p className="text-[10px] font-mono"><span className="text-zinc-400 uppercase">Color → </span>{brand.emotional_mapping.color_rationale}</p>
+                <p className="text-[10px] font-mono"><span className="text-zinc-400 uppercase">Type → </span>{brand.emotional_mapping.typography_rationale}</p>
+                <p className="text-[10px] font-mono"><span className="text-zinc-400 uppercase">Imagery → </span>{brand.emotional_mapping.imagery_rationale}</p>
+                <p className="text-[10px] font-mono"><span className="text-zinc-400 uppercase">Layout → </span>{brand.emotional_mapping.layout_rationale}</p>
+              </div>
+            </div>
+          </div>
+          )}
         </div>
       </section>
 
@@ -687,6 +1205,29 @@ ${brand.tailwind_config}
           </div>
         </div>
       </section>
+
+      {/* Iteration Controls */}
+      {onRegenerateAspect && (
+        <section className="space-y-8">
+          <div className="flex items-center gap-6">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 shrink-0">Refinement</h2>
+            <div className="h-px flex-1 bg-zinc-200" />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {(['colors', 'typography', 'name'] as const).map((aspect) => (
+              <Button
+                key={aspect}
+                variant="outline"
+                size="sm"
+                isLoading={regeneratingAspect === aspect}
+                onClick={() => onRegenerateAspect(aspect)}
+              >
+                Regenerate {aspect.charAt(0).toUpperCase() + aspect.slice(1)}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Action Bar */}
       <div className="flex flex-wrap justify-between items-center gap-8 pt-12 border-t-4 border-zinc-900 data-[exporting=true]:hidden" data-exporting={isExporting || isExportingMarkdown}>

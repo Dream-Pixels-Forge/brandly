@@ -30,7 +30,27 @@ export default function Gallery() {
   }, []);
 
   if (loading) {
-    return <Loading />;
+    return (
+      <div className="container-max mx-auto px-6 py-12 space-y-16">
+        <header className="border-b-4 border-zinc-200 pb-12">
+          <div className="space-y-4">
+            <div className="h-24 w-96 bg-zinc-100 animate-pulse" />
+            <div className="h-6 w-64 bg-zinc-50 animate-pulse" />
+          </div>
+        </header>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-0 border-l border-t border-zinc-200">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="border-r border-b border-zinc-200">
+              <div className="aspect-[4/3] bg-zinc-50 animate-pulse" />
+              <div className="p-6 space-y-3">
+                <div className="h-3 w-20 bg-zinc-100 animate-pulse" />
+                <div className="h-2 w-32 bg-zinc-50 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -149,17 +169,17 @@ export default function Gallery() {
 
                 {/* Metadata Footer */}
                 <div className="p-6 space-y-4 bg-white border-t border-zinc-100 transition-colors group-hover:bg-zinc-50">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="font-black text-[10px] uppercase tracking-tight text-zinc-900">{brand.identity.name}</p>
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-zinc-900" />
-                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
-                          {brand.identity.category} // {brand.identity.tone}
-                        </p>
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1 min-w-0">
+                        <p className="font-black text-[10px] uppercase tracking-tight text-zinc-900 truncate">{brand.identity.name}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-zinc-900 shrink-0" />
+                          <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.2em] truncate">
+                            {brand.identity.category} // {brand.identity.tone}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
+                      <div className="flex gap-2 shrink-0">
                        {brand.identity.target_audience.split(',').slice(0, 1).map((tag: string, i: number) => (
                          <span key={i} className="text-[8px] font-black uppercase tracking-widest bg-zinc-100 px-2 py-0.5 border border-zinc-200">
                            {tag.trim()}

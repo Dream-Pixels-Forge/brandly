@@ -1,5 +1,52 @@
 export type BrandMood = 'minimal' | 'bold' | 'luxury' | 'tech' | 'warm';
 
+export interface ColorRoles {
+  action: string;
+  support: string;
+  neutral: string;
+  feedback_success: string;
+  feedback_error: string;
+  feedback_warning: string;
+}
+
+export interface LogoPsychology {
+  shape_archetype: string;
+  shape_meaning: string;
+  symbol_type: string;
+  mark_style: string;
+  rationale: string;
+}
+
+export interface LogoVariants {
+  horizontal: string;
+  vertical: string;
+  icon_only: string;
+  monochrome: string;
+}
+
+export interface DesignConstraints {
+  type_family_count: number;
+  color_count: number;
+  accent_color: string;
+  rationale: string;
+}
+
+export interface EmotionalMapping {
+  target_emotions: string[];
+  color_rationale: string;
+  typography_rationale: string;
+  imagery_rationale: string;
+  layout_rationale: string;
+}
+
+export interface GridSpec {
+  type: string;
+  columns: number;
+  gutter: string;
+  column_width: string;
+  rationale: string;
+}
+
 export interface BrandIdentity {
   name: string;
   tagline: string;
@@ -13,6 +60,7 @@ export interface BrandIdentity {
     background: string;
     text: string;
   };
+  color_roles?: ColorRoles;
   typography: {
     heading: {
       family: string;
@@ -24,9 +72,14 @@ export interface BrandIdentity {
     };
   };
   logo_description: string;
+  logo_psychology?: LogoPsychology;
   tone: string;
   target_audience: string;
   category: 'SaaS' | 'Studio' | 'Commerce' | 'Brand' | 'Bank' | 'Portfolio' | 'Tech';
+  grid_spec?: GridSpec;
+  logo_variants?: LogoVariants;
+  design_constraints?: DesignConstraints;
+  emotional_mapping?: EmotionalMapping;
   tailwind_config: string;
 }
 

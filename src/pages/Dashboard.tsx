@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Layout, Settings, History, Trash2, Loader2, ShoppingBag, Box, Shield, User, Cpu, Globe } from 'lucide-react';
+import { Plus, Layout, Settings, History, Trash2, Loader2, ShoppingBag, Box, Shield, User, Cpu, Globe, GitCompare, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { brandService } from '../services/brandService';
-import { BrandProject } from '../types';
+import { BrandProject, BrandIdentity } from '../types';
 import { Loading } from '../components/ui/Loading';
 
 export default function Dashboard() {
@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'projects' | 'collections' | 'history'>('projects');
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -45,6 +47,19 @@ export default function Dashboard() {
     ? Object.entries(stats.mostUsedCategory).sort((a: any, b: any) => b[1] - a[1])[0][0]
     : 'N/A';
 
+  const toggleCompare = () => {
+    setCompareMode(!compareMode);
+    setSelectedForCompare([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedForCompare(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const compareBrands = selectedForCompare.map(id => brands.find(b => b.id === id)).filter(Boolean) as BrandProject[];
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this brand?')) return;
@@ -61,7 +76,27 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <Loading />;
+    return (
+      <div className="container-max mx-auto px-6 py-12 space-y-16">
+        <header className="border-b-4 border-zinc-200 pb-12">
+          <div className="space-y-4">
+            <div className="h-24 w-96 bg-zinc-100 animate-pulse" />
+            <div className="h-6 w-64 bg-zinc-50 animate-pulse" />
+          </div>
+        </header>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 border-l border-t border-zinc-200">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="border-r border-b border-zinc-200">
+              <div className="aspect-square bg-zinc-50 animate-pulse" />
+              <div className="p-8 space-y-4">
+                <div className="h-4 w-24 bg-zinc-100 animate-pulse" />
+                <div className="h-3 w-40 bg-zinc-50 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const renderContent = () => {
@@ -145,13 +180,20 @@ export default function Dashboard() {
       default:
         return (
           <main className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 border-l border-t border-zinc-900 h-fit">
-            {brands.map((brand) => (
+            {brands.map((brand) => {
+              const isSelected = selectedForCompare.includes(brand.id);
+              return (
               <motion.div 
                 key={brand.id}
                 whileHover={{ backgroundColor: '#f9f9f9' }}
-                className="group border-r border-b border-zinc-900 cursor-pointer overflow-hidden p-0"
-                onClick={() => navigate(`/brand/${brand.id}`)}
+                className={`group border-r border-b border-zinc-900 cursor-pointer overflow-hidden p-0 relative ${isSelected ? 'ring-2 ring-inset ring-zinc-900' : ''}`}
+                onClick={() => compareMode ? toggleSelect(brand.id) : navigate(`/brand/${brand.id}`)}
               >
+                {compareMode && (
+                  <div className={`absolute top-4 right-4 z-20 w-6 h-6 border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-zinc-900 border-zinc-900' : 'bg-white border-zinc-300'}`}>
+                    {isSelected && <X className="w-3 h-3 text-white" />}
+                  </div>
+                )}
                 <div 
                   className="aspect-square w-full p-12 flex flex-col items-center justify-center transition-all duration-700 group-hover:scale-95 relative overflow-hidden"
                   style={{ backgroundColor: brand.identity.colors.primary }}
@@ -204,7 +246,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )})}
             
             <Link to="/generate" className="aspect-square border-r border-b border-zinc-900 flex flex-col items-center justify-center gap-6 group hover:bg-zinc-900 transition-colors duration-500">
               <div className="w-12 h-12 border border-zinc-200 flex items-center justify-center group-hover:border-zinc-700 transition-colors">
@@ -236,12 +278,18 @@ export default function Dashboard() {
               Your collection of generated visual identities.
             </p>
           </div>
-          <Link to="/generate">
-            <Button size="lg">
-              <Plus className="w-5 h-5 mr-3" />
-              New Project
+          <div className="flex gap-4">
+            <Button variant="outline" size="lg" onClick={toggleCompare}>
+              <GitCompare className="w-5 h-5 mr-3" />
+              {compareMode ? 'Cancel' : 'Compare'}
             </Button>
-          </Link>
+            <Link to="/generate">
+              <Button size="lg">
+                <Plus className="w-5 h-5 mr-3" />
+                New Project
+              </Button>
+            </Link>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
@@ -294,6 +342,73 @@ export default function Dashboard() {
           {renderContent()}
         </div>
       </div>
+
+      <AnimatePresence>
+        {compareBrands.length >= 2 && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.6, ease: [0.85, 0, 0.15, 1] }}
+            className="fixed inset-0 z-50 bg-white flex flex-col"
+          >
+            <div className="border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-[0.3em]">
+                Identity Comparison — {compareBrands.length} Selected
+              </h2>
+              <Button variant="outline" size="sm" onClick={() => { setCompareMode(false); setSelectedForCompare([]); }}>
+                <X className="w-4 h-4 mr-2" />
+                Close
+              </Button>
+            </div>
+            <div className="flex-1 grid grid-cols-2 gap-0 overflow-auto">
+              {compareBrands.map((brand, idx) => (
+                <div key={brand.id} className={`flex flex-col border-r border-zinc-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-zinc-50'}`}>
+                  <div className="aspect-[3/2] flex items-center justify-center p-16" style={{ backgroundColor: brand.identity.colors.primary }}>
+                    <span className="text-white font-black text-5xl text-center leading-[0.8] uppercase">{brand.identity.name}</span>
+                  </div>
+                  <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Tagline</p>
+                      <p className="text-sm italic">{brand.identity.tagline}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Category / Tone</p>
+                      <p className="text-xs font-bold uppercase">{brand.identity.category} // {brand.identity.tone}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Color System</p>
+                      <div className="flex gap-2">
+                        {[brand.identity.colors.primary, brand.identity.colors.secondary, brand.identity.colors.accent].map((c, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="w-10 h-10 border border-zinc-200" style={{ backgroundColor: c }} />
+                            <p className="text-[8px] font-mono text-zinc-400">{c}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Typography</p>
+                      {typeof brand.identity.typography === 'string' ? (
+                        <p className="text-xs font-bold">{brand.identity.typography}</p>
+                      ) : (
+                        <>
+                          <p className="text-xs font-bold">{(brand.identity.typography as any).heading || (brand.identity.typography as any).primary || ''}</p>
+                          <p className="text-[10px] text-zinc-500">+ {(brand.identity.typography as any).body || (brand.identity.typography as any).secondary || ''}</p>
+                        </>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Visual Signature</p>
+                      <p className="text-xs text-zinc-600 leading-relaxed">{(brand.identity as any).visualStyle || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
